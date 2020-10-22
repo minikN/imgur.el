@@ -27,10 +27,34 @@
 (require 'json)
 (require 'mm-url)
 
+;;;###autoload
 (defconst imgur-client-id "f4a2d25e9bd3ed7"
   "This is the imgur client ID for the imgur.el library.
 It can only be used for anonymous uploads.")
 
+;;;###autoload
+(defconst ext "png"
+  "The default extension used for saving screenshots.")
+
+;;;###autoload
+(defun imgur-init-screenshot ()
+  "Initiate the process of taking a screenshot."
+  (interactive "Take a screenshot")
+  (let* ((sizes '("Section" "Full Screen"))
+         (targets '("Imgur" "Locally")))
+  (setq size (completing-read "Take Screenshot of ..." sizes)
+        target (completing-read "Save Screenshot to ..." targets))
+  (sit-for 0)
+  (cond ((equal target "Imgur")
+         (if (equal size "Section")
+             (imgur-screenshot nil)
+           (imgur-screenshot t)))
+        ((equal target "Locally")
+         (if (equal size "Section")
+             (imgur-screenshot-save nil)
+           (imgur-screenshot-save t))))))
+
+;;;###autoload
 (defun imgur-upload-image (image &optional datap kill)
   "Upload IMAGE to imgur and return the resulting imgur URL.
 If called interactively, copy the resulting URL to the kill ring.
@@ -39,7 +63,7 @@ If DATAP in non-nil, IMAGE should be a binary string containing
 the image.  If not, it should be a file name.
 
 If KILL, copy the resulting url to the kill ring."
-  (interactive "fImage to upload to imgur: ")
+  (interactive "Image to upload to imgur: ")
   (let* ((image (if datap
 		    image
 		  (with-temp-buffer
@@ -76,54 +100,36 @@ If KILL, copy the resulting url to the kill ring."
 	  (copy-region-as-kill (point-min) (point-max))))
       url)))
 
-(defun imgur-screenshot (delay)
-  "Take a screenshot and upload to imgur.
-DELAY (the numeric prefix) says how many seconds to wait before
-starting the screenshotting process."
+;;;###autoload
+(defun imgur-screenshot (full-screen)
+  "Take a screenshot and upload to imgur."
   (interactive "p")
   (unless (executable-find "import")
     (error "Can't find the ImageMagick import command on this system"))
-  (decf delay)
-  (unless (zerop delay)
-    (dotimes (i delay)
-      (message "Sleeping %d second%s..."
-	       (- delay i)
-	       (if (= (- delay i) 1)
-		   ""
-		 "s"))
-      (sleep-for 1)))
-  (message "Take screenshot")
   (imgur-upload-image
    (with-temp-buffer
      (set-buffer-multibyte nil)
-     (call-process "import" nil (current-buffer) nil "png:-")
+     (if full-screen
+         (call-process "import" nil (current-buffer) nil "-window" "root" "png:-")
+       (call-process "import" nil (current-buffer) nil "png:-"))
      (buffer-string))
    t t))
 
-(defun imgur-screenshot-save (delay)
-  "Take a screenshot and save to a file.
-DELAY (the numeric prefix) says how many seconds to wait before
-starting the screenshotting process."
+;;;###autoload
+(defun imgur-screenshot-save (full-screen)
+  "Take a screenshot and save to a file."
   (interactive "P")
   (unless (executable-find "import")
     (error "Can't find the ImageMagick import command on this system"))
-  (if (not delay)
-      (setq delay 5)
-    (setq delay (prefix-numeric-value delay)))
-  (unless (zerop delay)
-    (dotimes (i delay)
-      (message "Sleeping %d second%s..."
-	       (- delay i)
-	       (if (= (- delay i) 1)
-		   ""
-		 "s"))
-      (sleep-for 1)))
-  (message "Take screenshot")
-  (let ((file (make-temp-file "screen" nil ".jpg")))
-    (call-process "import" nil (current-buffer) nil file)
+  (let ((file (concat
+               (read-directory-name "Select directory: " "~/")
+               (read-string "File name (Without extension): ") "." ext)))
+    (sit-for 0)
+    (if full-screen
+        (call-process "import" nil (current-buffer) nil "-window" "root" file)
+      (call-process "import" nil (current-buffer) nil file))
     (kill-new file)
     (message "Copied %s" file)))
 
 (provide 'imgur)
-
 ;;; imgur.el ends here
