@@ -41,23 +41,14 @@ It can only be used for anonymous uploads.")
   "Initiate the process of taking a screenshot."
   (interactive "Take a screenshot")
   (let* ((sizes '("Section" "Full Screen"))
-         (targets '("Imgur" "Locally"))
-         (clips '("Image" "URL")))
-
+         (targets '("Imgur" "Locally")))
   (setq size (completing-read "Take Screenshot of ..." sizes)
-        target (completing-read "Save Screenshot to ..." targets)
-        clip (completing-read "Copy to clipboard ..." clips))
-
+        target (completing-read "Save Screenshot to ..." targets))
   (sit-for 0)
-
   (cond ((equal target "Imgur")
          (if (equal size "Section")
-             (if (equal clip "Image")
-                 (imgur-screenshot nil t)
-               (imgur-screenshot nil nil))
-             (if (equal clip "Image")
-                 (imgur-screenshot t t)
-               (imgur-screenshot t nil))))
+             (imgur-screenshot nil)
+           (imgur-screenshot t)))
         ((equal target "Locally")
          (if (equal size "Section")
              (imgur-screenshot-save nil)
@@ -100,18 +91,17 @@ If KILL, copy the resulting url to the kill ring."
       (when (re-search-forward "\n\n" nil t)
 	(setq json (json-read)))
       (kill-buffer (current-buffer)))
-    ;; (let ((url (cdr (assq 'link (car json)))))
-    ;;   (when (or (called-interactively-p 'interactive)
-    ;;     	kill)
-    ;;     (message "Copied '%s' to the kill ring" url)
-    ;;     (with-temp-buffer
-    ;;       (insert (url-encode-url url))
-    ;;       (copy-region-as-kill (point-min) (point-max))))
-    ;;   url)))
-    ))
+    (let ((url (cdr (assq 'link (car json)))))
+      (when (or (called-interactively-p 'interactive)
+		kill)
+	(message "Copied '%s' to the kill ring" url)
+	(with-temp-buffer
+	  (insert (url-encode-url url))
+	  (copy-region-as-kill (point-min) (point-max))))
+      url)))
 
 ;;;###autoload
-(defun imgur-screenshot (full-screen clip)
+(defun imgur-screenshot (full-screen)
   "Take a screenshot and upload to imgur."
   (interactive "p")
   (unless (executable-find "import")
@@ -120,12 +110,8 @@ If KILL, copy the resulting url to the kill ring."
    (with-temp-buffer
      (set-buffer-multibyte nil)
      (if full-screen
-         (if clip
-             (call-process "import" nil (current-buffer) nil "-window" "root" "png:-" "|" "xclip" "-selection" "clipboard" "-t" "image/png")
-             (call-process "import" nil (current-buffer) nil "-window" "root" "png:-"))
-         (if clip
-             (call-process "import" nil (current-buffer) nil "png:-" "|" "xclip" "-selection" "clipboard" "-t" "image/png")
-             (call-process "import" nil (current-buffer) nil "png:-")))
+         (call-process "import" nil (current-buffer) nil "-window" "root" "png:-")
+       (call-process "import" nil (current-buffer) nil "png:-"))
      (buffer-string))
    t t))
 
