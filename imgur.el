@@ -28,7 +28,7 @@
 (require 'mm-url)
 
 ;;;###autoload
-(defconst imgur-client-id "f4a2d25e9bd3ed7"
+(defconst imgur-client-id "7a3bd475cd9f48c"
   "This is the imgur client ID for the imgur.el library.
 It can only be used for anonymous uploads.")
 
